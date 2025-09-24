@@ -211,14 +211,15 @@
         }
         
         function returnToMain() {
-            document.getElementById('main-content').innerHTML = '';
-            document.getElementById('display-area').innerHTML = '';
+            // Fix: Ensure the display-area element is always present when returning to the main view
+            document.getElementById('main-content').innerHTML = '<div id="display-area"></div>';
         }
 
         // Add Data Function
         document.getElementById('addDataButton').addEventListener('click', () => {
             const mainContent = document.getElementById('main-content');
             mainContent.innerHTML = `
+                <div id="display-area"></div>
                 <form id="addDataForm">
                     <h3>Add New Fixture</h3>
                     <input type="text" id="fixtureName" placeholder="Fixture Name (Text & Integers)" required>
@@ -261,6 +262,7 @@
 
             const mainContent = document.getElementById('main-content');
             mainContent.innerHTML = `
+                <div id="display-area"></div>
                 <h3>${action === 'remove' ? 'Remove' : 'Edit'} Fixtures</h3>
                 <input type="text" id="dataSearchInput" placeholder="Search data...">
                 <div id="dataList"></div>
@@ -331,6 +333,7 @@
 
             const mainContent = document.getElementById('main-content');
             mainContent.innerHTML = `
+                <div id="display-area"></div>
                 <form id="editDataForm">
                     <h3>Edit Fixture: ${fixtureToEdit.name}</h3>
                     <input type="text" id="editFixtureName" value="${fixtureToEdit.name}">
