@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixture Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 50px;
+            margin: 0;
+            background-color: #f2f2f2;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            min-height: 80vh;
+        }
+
+        #search-bar-section {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 10px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        #searchSuggestions {
+            position: absolute;
+            width: 100%;
+            top: 100%;
+            left: 0;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            z-index: 10;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        #main-content {
+            flex-grow: 1;
+        }
+        
+        #goBackBtn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            background-color: #6c757d;
+            color: white;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        #goBackBtn:hover {
+            background-color: #5a6268;
+        }
+
+        #addDataForm, #editDataForm {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+
+        #addDataForm input, #editDataForm input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        #dataList {
+            margin-top: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .fixture-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .fixture-item:last-child {
+            border-bottom: none;
+        }
+
+        #bottom-panel {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        #libraryOptions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .filter-container {
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+
+        .filter-container select {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
+        }
+
+        #resultTemplate {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="search-bar-section">
+            <input type="text" id="searchInput" placeholder="Search for a fixture..." autocomplete="off">
+            <div id="searchSuggestions"></div>
+        </div>
+
+        <div id="main-content">
+            <div id="display-area"></div>
+        </div>
+
+        <div id="bottom-panel">
+            <button id="libraryButton">Library</button>
+            <div id="libraryOptions" style="display: none;">
+                <button id="addDataButton">Add Data</button>
+                <button id="removeDataButton">Remove Data</button>
+                <button id="editDataButton">Edit Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let fixtures = JSON.parse(localStorage.getItem('fixtures')) || [];
+        const password = "Tango Eye";
+
+        document.getElementById('libraryButton').addEventListener('click', () => {
+            const libraryOptions = document.getElementById('libraryOptions');
+            libraryOptions.style.display = libraryOptions.style.display === 'none' ? 'flex' : 'none';
+        });
+
+        function saveFixtures() {
+            localStorage.setItem('fixtures', JSON.stringify(fixtures));
+        }
+        
+        function returnToMain() {
+            document.getElementById('main-content').innerHTML = '';
+            document.getElementById('display-area').innerHTML = '';
+        }
+
+        // Add Data Function
+        document.getElementById('addDataButton').addEventListener('click', () => {
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = `
+                <form id="addDataForm">
+                    <h3>Add New Fixture</h3>
+                    <input type="text" id="fixtureName" placeholder="Fixture Name (Text & Integers)" required>
+                    <input type="text" id="fixtureType" placeholder="Fixture Type (Text)" required>
+                    <input type="number" id="fixtureFt" placeholder="Fixture Ft (Integer)" required>
+                    <input type="text" id="templateName" placeholder="Template Name (Text & Integers)" required>
+                    <button type="submit" id="saveDataButton">Save Data</button>
+                </form>
+                <button id="goBackBtn">Return to Main Menu</button>
+            `;
+
+            document.getElementById('addDataForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('fixtureName').value;
+                const type = document.getElementById('fixtureType').value;
+                const ft = parseInt(document.getElementById('fixtureFt').value, 10);
+                const template = document.getElementById('templateName').value;
+
+                if (!/^[a-zA-Z0-9\s]+$/.test(name) || !/^[a-zA-Z\s]+$/.test(type) || isNaN(ft) || !/^[a-zA-Z0-9\s]+$/.test(template)) {
+                    alert('Please check the input formats. Fixture Name and Template Name can contain text and numbers. Fixture Type can only contain text. Fixture Ft can only be a number.');
+                    return;
+                }
+
+                const newFixture = { id: Date.now(), name, type, ft, template };
+                fixtures.push(newFixture);
+                saveFixtures();
+                alert('Data saved successfully! 👍');
+                returnToMain();
+            });
+            document.getElementById('goBackBtn').addEventListener('click', returnToMain);
+        });
+
+        // Remove and Edit Data Functions
+        function showDataManagement(action) {
+            const passwordInput = prompt("Please enter the password:");
+            if (passwordInput !== password) {
+                alert("Incorrect password.");
+                return;
+            }
+
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = `
+                <h3>${action === 'remove' ? 'Remove' : 'Edit'} Fixtures</h3>
+                <input type="text" id="dataSearchInput" placeholder="Search data...">
+                <div id="dataList"></div>
+                <button id="goBackBtn">Return to Main Menu</button>
+            `;
+
+            const dataSearchInput = document.getElementById('dataSearchInput');
+            dataSearchInput.addEventListener('input', () => {
+                displayFixtures(dataSearchInput.value, action);
+            });
+
+            displayFixtures('', action);
+            document.getElementById('goBackBtn').addEventListener('click', returnToMain);
+        }
+
+        function displayFixtures(searchTerm, action) {
+            const dataList = document.getElementById('dataList');
+            dataList.innerHTML = '';
+            const filteredFixtures = fixtures.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+            if (filteredFixtures.length === 0) {
+                dataList.innerHTML = '<p>No matching fixtures found.</p>';
+                return;
+            }
+
+            filteredFixtures.forEach(fixture => {
+                const fixtureElement = document.createElement('div');
+                fixtureElement.classList.add('fixture-item');
+                fixtureElement.innerHTML = `
+                    <div>
+                        <strong>${fixture.name}</strong> - Type: ${fixture.type}, Ft: ${fixture.ft}, Template: ${fixture.template}
+                    </div>
+                    <div>
+                        ${action === 'edit' ? `<button class="editBtn" data-id="${fixture.id}">Edit</button>` : ''}
+                        <button class="deleteBtn" data-id="${fixture.id}">Delete</button>
+                    </div>
+                `;
+                dataList.appendChild(fixtureElement);
+            });
+
+            dataList.querySelectorAll('.deleteBtn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    deleteData(e.target.dataset.id, action);
+                });
+            });
+
+            if (action === 'edit') {
+                dataList.querySelectorAll('.editBtn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        editData(e.target.dataset.id);
+                    });
+                });
+            }
+        }
+
+        function deleteData(id, action) {
+            if (confirm('Are you sure you want to delete this data?')) {
+                fixtures = fixtures.filter(f => f.id != id);
+                saveFixtures();
+                alert('Data deleted successfully! 🗑️');
+                showDataManagement(action);
+            }
+        }
+
+        function editData(id) {
+            const fixtureToEdit = fixtures.find(f => f.id == id);
+            if (!fixtureToEdit) return;
+
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = `
+                <form id="editDataForm">
+                    <h3>Edit Fixture: ${fixtureToEdit.name}</h3>
+                    <input type="text" id="editFixtureName" value="${fixtureToEdit.name}">
+                    <input type="text" id="editFixtureType" value="${fixtureToEdit.type}">
+                    <input type="number" id="editFixtureFt" value="${fixtureToEdit.ft}">
+                    <input type="text" id="editTemplateName" value="${fixtureToEdit.template}">
+                    <button type="submit" id="updateButton">Update</button>
+                </form>
+                <button id="goBackBtn">Return to Main Menu</button>
+            `;
+
+            document.getElementById('editDataForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const newName = document.getElementById('editFixtureName').value;
+                const newType = document.getElementById('editFixtureType').value;
+                const newFt = parseInt(document.getElementById('editFixtureFt').value, 10);
+                const newTemplate = document.getElementById('editTemplateName').value;
+
+                if (!/^[a-zA-Z0-9\s]+$/.test(newName) || !/^[a-zA-Z\s]+$/.test(newType) || isNaN(newFt) || !/^[a-zA-Z0-9\s]+$/.test(newTemplate)) {
+                    alert('Please check the input formats.');
+                    return;
+                }
+
+                fixtureToEdit.name = newName;
+                fixtureToEdit.type = newType;
+                fixtureToEdit.ft = newFt;
+                fixtureToEdit.template = newTemplate;
+
+                saveFixtures();
+                alert('Data updated successfully! ✍️');
+                showDataManagement('edit');
+            });
+            document.getElementById('goBackBtn').addEventListener('click', returnToMain);
+        }
+
+        document.getElementById('removeDataButton').addEventListener('click', () => showDataManagement('remove'));
+        document.getElementById('editDataButton').addEventListener('click', () => showDataManagement('edit'));
+
+        // Search Bar Functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const searchSuggestions = document.getElementById('searchSuggestions');
+            searchSuggestions.innerHTML = '';
+
+            if (!searchTerm) {
+                searchSuggestions.style.display = 'none';
+                document.getElementById('display-area').innerHTML = '';
+                return;
+            }
+
+            const matchedFixtures = fixtures.filter(f => f.name.toLowerCase().includes(searchTerm));
+            const uniqueNames = [...new Set(matchedFixtures.map(f => f.name))];
+
+            uniqueNames.forEach(name => {
+                const suggestionDiv = document.createElement('div');
+                suggestionDiv.textContent = name;
+                suggestionDiv.classList.add('suggestion-item');
+                suggestionDiv.addEventListener('click', () => {
+                    document.getElementById('searchInput').value = name;
+                    searchSuggestions.style.display = 'none';
+                    showFilterOptions(name);
+                });
+                searchSuggestions.appendChild(suggestionDiv);
+            });
+
+            searchSuggestions.style.display = 'block';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#search-bar-section')) {
+                document.getElementById('searchSuggestions').style.display = 'none';
+            }
+        });
+
+        function showFilterOptions(fixtureName) {
+            const displayArea = document.getElementById('display-area');
+            const filteredFixtures = fixtures.filter(f => f.name === fixtureName);
+            const uniqueTypes = [...new Set(filteredFixtures.map(f => f.type))];
+            const uniqueFts = [...new Set(filteredFixtures.map(f => f.ft))];
+
+            displayArea.innerHTML = `
+                <div class="filter-container">
+                    <h3>Filters for: ${fixtureName}</h3>
+                    <label for="typeSelect">Fixture Type:</label>
+                    <select id="typeSelect">
+                        <option value="">--Select Type--</option>
+                        ${uniqueTypes.map(type => `<option value="${type}">${type}</option>`).join('')}
+                    </select>
+                    <label for="ftSelect">Fixture Ft:</label>
+                    <select id="ftSelect">
+                        <option value="">--Select Ft--</option>
+                        ${uniqueFts.map(ft => `<option value="${ft}">${ft}</option>`).join('')}
+                    </select>
+                    <div id="resultTemplate"></div>
+                </div>
+            `;
+
+            const typeSelect = document.getElementById('typeSelect');
+            const ftSelect = document.getElementById('ftSelect');
+            const resultTemplate = document.getElementById('resultTemplate');
+
+            const updateTemplateDisplay = () => {
+                const selectedType = typeSelect.value;
+                const selectedFt = ftSelect.value;
+                let templateFound = false;
+
+                if (selectedType && selectedFt) {
+                    const finalMatch = fixtures.find(f => f.name === fixtureName && f.type === selectedType && f.ft == selectedFt);
+                    if (finalMatch) {
+                        resultTemplate.innerHTML = `<h4>Template Name: ${finalMatch.template}</h4>`;
+                        templateFound = true;
+                    }
+                }
+                if (!templateFound) {
+                    resultTemplate.innerHTML = '<p>No template found for the selected combination.</p>';
+                }
+            };
+
+            typeSelect.addEventListener('change', updateTemplateDisplay);
+            ftSelect.addEventListener('change', updateTemplateDisplay);
+        }
+    </script>
+</body>
+</html>
