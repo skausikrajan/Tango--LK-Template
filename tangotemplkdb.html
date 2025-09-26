@@ -139,10 +139,10 @@
 
         #libraryOptions {
             display: flex;
-            flex-wrap: wrap; /* Added for better layout on smaller screens */
+            flex-wrap: wrap;
             gap: 10px;
             margin-top: 10px;
-            justify-content: center; /* Center buttons */
+            justify-content: center;
         }
         
         button {
@@ -241,35 +241,45 @@
         }
         
         function returnToMain() {
-            // Fix: Ensure the display-area element is always present when returning to the main view
             document.getElementById('main-content').innerHTML = '<div id="display-area"></div>';
-            // Also ensure library options are hidden for a clean return
             document.getElementById('libraryOptions').style.display = 'none';
         }
 
-        // === Data Validation Functions ===
-        function isValidFixtureName(str) { return /^[a-zA-Z0-9\s]+$/.test(str); }
-        function isValidFixtureType(str) { return /^[a-zA-Z\s]+$/.test(str); }
-        function isValidFixtureFt(val) { return !isNaN(parseInt(val, 10)) && isFinite(val) && val > 0; } // Assuming Ft should be a positive integer
-        function isValidTemplateName(str) { return /^[a-zA-Z0-9\s]+$/.test(str); }
+        // =========================================================================
+        // === Data Validation Functions (Matches your requested conditions) ===
+        // =========================================================================
+        
+        // Fixture Name and Template Name: Allows text and integers (no special characters)
+        function isValidTextAndNumbers(str) { return /^[a-zA-Z0-9\s]+$/.test(str.trim()); }
+        
+        // Fixture Type: Supports only text
+        function isValidFixtureType(str) { return /^[a-zA-Z\s]+$/.test(str.trim()); }
+        
+        // Fixture Ft: Supports only integer
+        function isValidFixtureFt(val) { 
+            const num = parseInt(val, 10);
+            return !isNaN(num) && isFinite(val) && String(num) === String(val).trim() && num > 0;
+        } 
         
         function validateFixture(name, type, ft, template) {
-            if (!isValidFixtureName(name)) {
-                return 'Fixture Name must contain only text and numbers.';
+            if (!isValidTextAndNumbers(name)) {
+                return 'Fixture Name must contain only text and numbers (no special characters).';
             }
             if (!isValidFixtureType(type)) {
                 return 'Fixture Type must contain only text.';
             }
             if (!isValidFixtureFt(ft)) {
-                return 'Fixture Ft must be a positive number.';
+                return 'Fixture Ft must be a positive integer.';
             }
-            if (!isValidTemplateName(template)) {
-                return 'Template Name must contain only text and numbers.';
+            if (!isValidTextAndNumbers(template)) {
+                return 'Template Name must contain only text and numbers (no special characters).';
             }
             return null; // Null means valid
         }
+        // =========================================================================
 
-        // === Add Data Function ===
+
+        // === Add Data Function (Uses the validation logic) ===
         document.getElementById('addDataButton').addEventListener('click', () => {
             const mainContent = document.getElementById('main-content');
             mainContent.innerHTML = `
@@ -289,7 +299,7 @@
                 e.preventDefault();
                 const name = document.getElementById('fixtureName').value.trim();
                 const type = document.getElementById('fixtureType').value.trim();
-                const ft = parseInt(document.getElementById('fixtureFt').value, 10);
+                const ft = document.getElementById('fixtureFt').value; // Keep as string for strict validation check
                 const template = document.getElementById('templateName').value.trim();
                 
                 const validationError = validateFixture(name, type, ft, template);
@@ -299,7 +309,7 @@
                     return;
                 }
 
-                const newFixture = { id: Date.now(), name, type, ft, template };
+                const newFixture = { id: Date.now(), name, type, ft: parseInt(ft, 10), template };
                 fixtures.push(newFixture);
                 saveFixtures();
                 alert('Data saved successfully! 👍');
@@ -308,7 +318,7 @@
             document.getElementById('goBackBtn').addEventListener('click', returnToMain);
         });
 
-        // === CSV Import Functionality ===
+        // === CSV Import Functionality (Uses the validation logic) ===
         document.getElementById('importCsvButton').addEventListener('click', () => {
              const passwordInput = prompt("Please enter the password for Import:");
             if (passwordInput !== password) {
@@ -321,7 +331,7 @@
                 <div id="display-area"></div>
                 <div class="data-management-container">
                     <h3>Import CSV Fixture Data</h3>
-                    <p>Expected format: Fixture Name, Fixture Type, Fixture Ft, Template Name. Ft must be a number.</p>
+                    <p>Expected format: Fixture Name, Fixture Type, Fixture Ft, Template Name.</p>
                     <input type="file" id="csvFileInput" accept=".csv" required>
                     <button id="processCsvButton">Process CSV</button>
                 </div>
@@ -351,8 +361,7 @@
                     return;
                 }
                 
-                // Option: Replace all existing data or merge
-                if (confirm(`Found ${importedData.length} records. Do you want to REPLACE ALL existing data with this imported data? (Cancel to APPEND to existing data)`)) {
+                if (confirm(`Found ${importedData.length} valid records. Do you want to REPLACE ALL existing data with this imported data? (Cancel to APPEND to existing data)`)) {
                     fixtures = importedData;
                     alert(`Successfully replaced all data with ${importedData.length} new records! 💾`);
                 } else {
@@ -374,35 +383,44 @@
         function parseCSV(csvText) {
             const lines = csvText.trim().split('\n').filter(line => line.trim() !== '');
             const newFixtures = [];
+            let invalidRowCount = 0;
 
-            // Skip header row if present, or just process all rows
-            // Simple split by comma, works for basic CSVs without complex quoting
             for (let i = 0; i < lines.length; i++) {
                 const values = lines[i].split(',').map(v => v.trim());
                 
-                // Assuming columns: Name, Type, Ft, Template
+                // Expect 4 columns: Name, Type, Ft, Template
                 if (values.length >= 4) {
                     const name = values[0];
                     const type = values[1];
-                    const ft = parseInt(values[2], 10);
+                    const ft = values[2]; // Passed as string for strict validation
                     const template = values[3];
                     
                     const validationError = validateFixture(name, type, ft, template);
                     
                     if (validationError) {
                         console.warn(`Skipping invalid row ${i + 1}: ${validationError} - Data: ${lines[i]}`);
+                        invalidRowCount++;
                         continue; // Skip invalid rows
                     }
                     
-                    // Generate a new unique ID (important for proper deletion/editing later)
-                    newFixtures.push({ id: Date.now() + i, name, type, ft, template });
+                    // Add the valid fixture, converting Ft back to an integer
+                    newFixtures.push({ 
+                        id: Date.now() + i, 
+                        name, 
+                        type, 
+                        ft: parseInt(ft, 10), 
+                        template 
+                    });
                 }
+            }
+            if (invalidRowCount > 0) {
+                alert(`Warning: ${invalidRowCount} rows were skipped due to invalid data format.`);
             }
             return newFixtures;
         }
 
 
-        // === Remove and Edit Data Functions ===
+        // === Remove, Edit, and Search Functions (Same as previous, using consistent validation) ===
         function showDataManagement(action) {
             const passwordInput = prompt("Please enter the password:");
             if (passwordInput !== password) {
@@ -475,7 +493,7 @@
                 fixtures = fixtures.filter(f => f.id != id);
                 saveFixtures();
                 alert('Data deleted successfully! 🗑️');
-                showDataManagement(action); // Re-display the list
+                showDataManagement(action);
             }
         }
 
@@ -501,7 +519,7 @@
                 e.preventDefault();
                 const newName = document.getElementById('editFixtureName').value.trim();
                 const newType = document.getElementById('editFixtureType').value.trim();
-                const newFt = parseInt(document.getElementById('editFixtureFt').value, 10);
+                const newFt = document.getElementById('editFixtureFt').value;
                 const newTemplate = document.getElementById('editTemplateName').value.trim();
 
                 const validationError = validateFixture(newName, newType, newFt, newTemplate);
@@ -511,15 +529,14 @@
                     return;
                 }
 
-                // Update the original object in the array
                 fixtureToEdit.name = newName;
                 fixtureToEdit.type = newType;
-                fixtureToEdit.ft = newFt;
+                fixtureToEdit.ft = parseInt(newFt, 10);
                 fixtureToEdit.template = newTemplate;
 
                 saveFixtures();
                 alert('Data updated successfully! ✍️');
-                showDataManagement('edit'); // Return to the edit list view
+                showDataManagement('edit');
             });
             document.getElementById('goBackBtn').addEventListener('click', returnToMain);
         }
@@ -539,7 +556,6 @@
                 return;
             }
 
-            // Filter for unique fixture names that match the search term
             const matchedFixtures = fixtures.filter(f => f.name.toLowerCase().includes(searchTerm));
             const uniqueNames = [...new Set(matchedFixtures.map(f => f.name))];
 
@@ -566,12 +582,10 @@
 
         function showFilterOptions(fixtureName) {
             const displayArea = document.getElementById('display-area');
-            // Filter ALL fixtures by the exact selected name
             const filteredFixtures = fixtures.filter(f => f.name === fixtureName);
             
-            // Get unique types and Fts only for the selected Fixture Name
             const uniqueTypes = [...new Set(filteredFixtures.map(f => f.type))];
-            const uniqueFts = [...new Set(filteredFixtures.map(f => f.ft))].sort((a, b) => a - b); // Sort Fts numerically
+            const uniqueFts = [...new Set(filteredFixtures.map(f => f.ft))].sort((a, b) => a - b);
 
             displayArea.innerHTML = `
                 <div class="filter-container">
@@ -596,12 +610,10 @@
 
             const updateTemplateDisplay = () => {
                 const selectedType = typeSelect.value;
-                // Ft is stored as a number, so we check against the number value
                 const selectedFt = parseInt(ftSelect.value, 10); 
                 let templateFound = false;
 
                 if (selectedType && selectedFt) {
-                    // Find a match based on all three criteria
                     const finalMatch = fixtures.find(f => f.name === fixtureName && f.type === selectedType && f.ft === selectedFt);
                     if (finalMatch) {
                         resultTemplate.innerHTML = `<h4>Template Name: ${finalMatch.template}</h4>`;
@@ -618,7 +630,6 @@
             ftSelect.addEventListener('change', updateTemplateDisplay);
         }
         
-        // Initial setup on load to ensure main view is ready
         returnToMain(); 
     </script>
 </body>
