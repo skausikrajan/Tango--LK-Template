@@ -250,14 +250,21 @@
         // =========================================================================
         
         // Fixture Name and Template Name: Allows text and integers (no special characters)
-        function isValidTextAndNumbers(str) { return /^[a-zA-Z0-9\s]+$/.test(str.trim()); }
+        function isValidTextAndNumbers(str) { 
+            // Allows letters, numbers, and spaces
+            return /^[a-zA-Z0-9\s]+$/.test(str.trim()); 
+        }
         
         // Fixture Type: Supports only text
-        function isValidFixtureType(str) { return /^[a-zA-Z\s]+$/.test(str.trim()); }
+        function isValidFixtureType(str) { 
+            // Allows letters and spaces only
+            return /^[a-zA-Z\s]+$/.test(str.trim()); 
+        }
         
-        // Fixture Ft: Supports only integer
+        // Fixture Ft: Supports only positive integer
         function isValidFixtureFt(val) { 
             const num = parseInt(val, 10);
+            // Must be a number, finite, string representation must match integer value (no decimals/text), and positive.
             return !isNaN(num) && isFinite(val) && String(num) === String(val).trim() && num > 0;
         } 
         
@@ -279,7 +286,7 @@
         // =========================================================================
 
 
-        // === Add Data Function (Uses the validation logic) ===
+        // === Add Data Function ===
         document.getElementById('addDataButton').addEventListener('click', () => {
             const mainContent = document.getElementById('main-content');
             mainContent.innerHTML = `
@@ -299,7 +306,7 @@
                 e.preventDefault();
                 const name = document.getElementById('fixtureName').value.trim();
                 const type = document.getElementById('fixtureType').value.trim();
-                const ft = document.getElementById('fixtureFt').value; // Keep as string for strict validation check
+                const ft = document.getElementById('fixtureFt').value; 
                 const template = document.getElementById('templateName').value.trim();
                 
                 const validationError = validateFixture(name, type, ft, template);
@@ -318,7 +325,7 @@
             document.getElementById('goBackBtn').addEventListener('click', returnToMain);
         });
 
-        // === CSV Import Functionality (Uses the validation logic) ===
+        // === CSV Import Functionality ===
         document.getElementById('importCsvButton').addEventListener('click', () => {
              const passwordInput = prompt("Please enter the password for Import:");
             if (passwordInput !== password) {
@@ -381,11 +388,13 @@
         }
         
         function parseCSV(csvText) {
+            // Split into lines, removing empty lines
             const lines = csvText.trim().split('\n').filter(line => line.trim() !== '');
             const newFixtures = [];
             let invalidRowCount = 0;
 
             for (let i = 0; i < lines.length; i++) {
+                // Split by comma and trim spaces
                 const values = lines[i].split(',').map(v => v.trim());
                 
                 // Expect 4 columns: Name, Type, Ft, Template
@@ -398,6 +407,7 @@
                     const validationError = validateFixture(name, type, ft, template);
                     
                     if (validationError) {
+                        // This row is invalid (e.g., the header row or a row with incorrect data type)
                         console.warn(`Skipping invalid row ${i + 1}: ${validationError} - Data: ${lines[i]}`);
                         invalidRowCount++;
                         continue; // Skip invalid rows
@@ -420,7 +430,7 @@
         }
 
 
-        // === Remove, Edit, and Search Functions (Same as previous, using consistent validation) ===
+        // === Remove, Edit, and Search Functions ===
         function showDataManagement(action) {
             const passwordInput = prompt("Please enter the password:");
             if (passwordInput !== password) {
@@ -506,10 +516,10 @@
                 <div id="display-area"></div>
                 <form id="editDataForm">
                     <h3>Edit Fixture: ${fixtureToEdit.name}</h3>
-                    <input type="text" id="editFixtureName" value="${fixtureToEdit.name}">
-                    <input type="text" id="editFixtureType" value="${fixtureToEdit.type}">
-                    <input type="number" id="editFixtureFt" value="${fixtureToEdit.ft}">
-                    <input type="text" id="editTemplateName" value="${fixtureToEdit.template}">
+                    <input type="text" id="editFixtureName" value="${fixtureToEdit.name}" placeholder="Fixture Name (Text & Integers)">
+                    <input type="text" id="editFixtureType" value="${fixtureToEdit.type}" placeholder="Fixture Type (Text)">
+                    <input type="number" id="editFixtureFt" value="${fixtureToEdit.ft}" placeholder="Fixture Ft (Integer)">
+                    <input type="text" id="editTemplateName" value="${fixtureToEdit.template}" placeholder="Template Name (Text & Integers)">
                     <button type="submit" id="updateButton">Update</button>
                 </form>
                 <button id="goBackBtn">Return to Main Menu</button>
